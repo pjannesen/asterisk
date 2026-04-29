@@ -71,6 +71,7 @@
 #include "asterisk/stasis_channels.h"
 #include "asterisk/dial.h"
 #include "asterisk/vector.h"
+#include "asterisk/bridge_after.h"
 #include "pbx_private.h"
 
 /*!
@@ -6982,7 +6983,7 @@ int ast_add_extension(const char *context, int replace, const char *extension,
 	return ret;
 }
 
-int ast_explicit_goto(struct ast_channel *chan, const char *context, const char *exten, int priority)
+static int __ast_explicit_goto(struct ast_channel *chan, const char *context, const char *exten, int priority, int discard_after_goto)
 {
 	if (!chan)
 		return -1;
@@ -6993,6 +6994,11 @@ int ast_explicit_goto(struct ast_channel *chan, const char *context, const char 
 		ast_channel_unlock(chan);
 		return -1;
 	}
+
+	if (discard_after_goto) {
+		ast_bridge_discard_after_goto(chan);
+	}
+
 	if (!ast_strlen_zero(context))
 		ast_channel_context_set(chan, context);
 	if (!ast_strlen_zero(exten))
@@ -7010,7 +7016,7 @@ int ast_explicit_goto(struct ast_channel *chan, const char *context, const char 
 	return 0;
 }
 
-int ast_async_goto(struct ast_channel *chan, const char *context, const char *exten, int priority)
+static int __ast_async_goto(struct ast_channel *chan, const char *context, const char *exten, int priority, int discard_after_goto)
 {
 	struct ast_channel *newchan;
 
@@ -7020,7 +7026,7 @@ int ast_async_goto(struct ast_channel *chan, const char *context, const char *ex
 		if (ast_test_flag(ast_channel_flags(chan), AST_FLAG_IN_AUTOLOOP)) {
 			priority += 1;
 		}
-		ast_explicit_goto(chan, context, exten, priority);
+		__ast_explicit_goto(chan, context, exten, priority, discard_after_goto);
 		ast_softhangup_nolock(chan, AST_SOFTHANGUP_ASYNCGOTO);
 		ast_channel_unlock(chan);
 		return 0;
@@ -7033,7 +7039,7 @@ int ast_async_goto(struct ast_channel *chan, const char *context, const char *ex
 		ast_log(LOG_WARNING, "Unable to gain control of channel %s\n", ast_channel_name(chan));
 		return -1;
 	}
-	ast_explicit_goto(newchan, context, exten, priority);
+	__ast_explicit_goto(newchan, context, exten, priority, discard_after_goto);
 	if (ast_pbx_start(newchan)) {
 		ast_hangup(newchan);
 		ast_log(LOG_WARNING, "Unable to start PBX on %s\n", ast_channel_name(newchan));
@@ -7042,6 +7048,22 @@ int ast_async_goto(struct ast_channel *chan, const char *context, const char *ex
 
 	return 0;
 }
+
+int ast_explicit_goto(struct ast_channel *chan, const char *context, const char *exten, int priority)
+{
+	return __ast_explicit_goto(chan, context, exten, priority, 0);
+}
+
+int ast_async_goto(struct ast_channel *chan, const char *context, const char *exten, int priority)
+{
+	return __ast_async_goto(chan, context, exten, priority, 0);
+}
+
+int ast_async_goto_and_discard_after_goto(struct ast_channel *chan, const char *context, const char *exten, int priority)
+{
+	return __ast_async_goto(chan, context, exten, priority, 1);
+}
+
 
 int ast_async_goto_by_name(const char *channame, const char *context, const char *exten, int priority)
 {

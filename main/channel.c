@@ -10685,6 +10685,8 @@ struct ast_channel *ast_channel_yank(struct ast_channel *yankee)
 		struct ast_format *writeformat;
 	} my_vars = { 0, };
 
+	ast_debug(2, "%s: yank channel\n", ast_channel_name(yankee));
+
 	ast_channel_lock(yankee);
 	my_vars.accountcode = ast_strdupa(ast_channel_accountcode(yankee));
 	my_vars.exten = ast_strdupa(ast_channel_exten(yankee));
