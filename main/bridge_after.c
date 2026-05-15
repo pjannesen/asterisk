@@ -385,6 +385,8 @@ void ast_bridge_discard_after_goto(struct ast_channel *chan)
 {
 	struct ast_datastore *datastore;
 
+	ast_debug(1, "discard_after_goto %s\n", ast_channel_context(chan));
+
 	datastore = after_bridge_goto_remove(chan);
 	if (datastore) {
 		ast_datastore_free(datastore);
@@ -456,6 +458,7 @@ int ast_bridge_setup_after_goto(struct ast_channel *chan)
 	/* Get after bridge goto datastore. */
 	datastore = after_bridge_goto_remove(chan);
 	if (!datastore) {
+		ast_debug(1, "No after_bridge_goto data %s\n", ast_channel_context(chan));
 		return goto_failed;
 	}
 
