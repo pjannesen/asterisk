@@ -3072,13 +3072,11 @@ struct ast_sip_session *ast_sip_session_alloc(struct ast_sip_endpoint *endpoint,
 		 */
 		session->serializer = ast_sip_get_distributor_serializer(rdata);
 	} else {
-		char tps_name[AST_TASKPROCESSOR_MAX_NAME + 1];
-
-		/* Create name with seq number appended. */
-		ast_taskprocessor_build_name(tps_name, sizeof(tps_name), "pjsip/outsess/%s",
-			ast_sorcery_object_get_id(endpoint));
-
-		session->serializer = ast_sip_create_serializer(tps_name);
+		/*
+		 * This is an outgoing session, so we can just choose a serializer
+		 * from the distributor pool based on the dialog.
+		 */
+		session->serializer = ast_sip_get_distributor_serializer_dialog(inv_session->dlg);
 	}
 	if (!session->serializer) {
 		return NULL;
@@ -3248,6 +3246,12 @@ struct ast_sip_session *ast_sip_session_create_outgoing(struct ast_sip_endpoint 
 	struct ast_sip_session *ret_session;
 	SCOPE_ENTER(1, "%s %s Topology: %s\n", ast_sorcery_object_get_id(endpoint), request_user,
 		ast_str_tmp(256, ast_stream_topology_to_str(req_topology, &STR_TMP)));
+
+	if (ast_sip_session_check_supplement_create(endpoint, contact, location,
+			request_user, req_topology)) {
+		SCOPE_EXIT_RTN_VALUE(NULL, "%s: Session creation blocked by supplement\n",
+			ast_sorcery_object_get_id(endpoint));
+	}
 
 	/* If no location has been provided use the AOR list from the endpoint itself */
 	if (location || !contact) {

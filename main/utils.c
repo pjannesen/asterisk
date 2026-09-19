@@ -298,14 +298,12 @@ int ast_base64decode(unsigned char *dst, const char *src, int max)
 	int cnt = 0;
 	unsigned int byte = 0;
 	unsigned int bits = 0;
-	int incnt = 0;
 	while(*src && *src != '=' && (cnt < max)) {
 		/* Shift in 6 bits of input */
 		byte <<= 6;
 		byte |= (b2a[(int)(*src)]) & 0x3f;
 		bits += 6;
 		src++;
-		incnt++;
 		/* If we have at least 8 bits left over, take that character
 		   off the top */
 		if (bits >= 8)  {
@@ -1854,7 +1852,7 @@ int ast_carefulwrite(int fd, char *s, int len, int timeoutms)
 char *ast_strip_quoted(char *s, const char *beg_quotes, const char *end_quotes)
 {
 	char *e;
-	char *q;
+	const char *q;
 
 	s = ast_strip(s);
 	if ((q = strchr(beg_quotes, *s)) && *q != '\0') {
